@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoiceID Pro - Reconnaissance du Locuteur</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --accent: #f093fb;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --text-primary: #1a202c;
+            --text-secondary: #4a5568;
+            --border: #e2e8f0;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --sidebar-width: 280px;
+        }
+
+        [data-theme="dark"] {
+            --primary: #818cf8;
+            --secondary: #a855f7;
+            --accent: #ec4899;
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --border: #334155;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        [data-theme="night"] {
+            --primary: #3b82f6;
+            --secondary: #1e40af;
+            --accent: #06b6d4;
+            --bg-primary: #0c1426;
+            --bg-secondary: #1a2332;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --border: #2d3748;
+            --shadow: rgba(0, 0, 0, 0.4);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateX(0);
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-header {
+            padding: 30px 25px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="0.5" fill="rgba(255,255,255,0.05)"/><circle cx="40" cy="80" r="1.5" fill="rgba(255,255,255,0.08)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: white;
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo-icon {
+            width: 45px;
+            height: 45px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4em;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo-text h2 {
+            font-size: 1.3em;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .logo-text p {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+
+        .nav-menu {
+            flex: 1;
+            padding: 20px 0;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 25px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            color: var(--text-secondary);
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: linear-gradient(90deg, var(--primary)15, transparent);
+            color: var(--primary);
+            border-left-color: var(--primary);
+            transform: translateX(5px);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(90deg, var(--primary)20, transparent);
+            color: var(--primary);
+            border-left-color: var(--primary);
+            font-weight: 600;
+        }
+
+        .nav-item i {
+            font-size: 1.1em;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Theme Selector */
+        .theme-selector {
+            padding: 20px 25px;
+            border-top: 1px solid var(--border);
+        }
+
+        .theme-title {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .theme-options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .theme-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .theme-option.active {
+            border-color: var(--primary);
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px var(--shadow);
+        }
+
+        .theme-option.light {
+            background: linear-gradient(135deg, #f8fafc, #ffffff);
+        }
+
+        .theme-option.dark {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+        }
+
+        .theme-option.night {
+            background: linear-gradient(135deg, #0c1426, #1a2332);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .main-content.expanded {
+            margin-left: 0;
+        }
+
+        .topbar {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(20px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .menu-toggle {
+            background: none;
+            border: none;
+            font-size: 1.3em;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .menu-toggle:hover {
+            background: var(--primary)15;
+            color: var(--primary);
+            transform: scale(1.1);
+        }
+
+        .page-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--success)15;
+            color: var(--success);
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        /* Content Area */
+        .content-area {
+            padding: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .page-content {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .recognition-container {
+            background: var(--bg-secondary);
+            border-radius: 24px;
+            padding: 50px;
+            box-shadow: 0 25px 80px var(--shadow);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .recognition-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+            background-size: 300% 100%;
+            animation: gradientShift 4s ease-in-out infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .recognition-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .recognition-title {
+            font-size: 2.5em;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+            opacity: 0;
+            animation: fadeInUp 1s ease-out 0.2s forwards;
+        }
+
+        .recognition-subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1em;
+            opacity: 0;
+            animation: fadeInUp 1s ease-out 0.4s forwards;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Enhanced Step Indicator */
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 60px;
+            position: relative;
+            opacity: 0;
+            animation: fadeInUp 1s ease-out 0.6s forwards;
+        }
+
+        .step-indicator::before {
+            content: '';
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            right: 25px;
+            height: 2px;
+            background: var(--border);
+            z-index: 1;
+        }
+
+        .step {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .step-circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            font-weight: 700;
+            color: var(--text-secondary);
+            border: 3px solid var(--bg-secondary);
+        }
+
+        .step.active .step-circle {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            transform: scale(1.2);
+            box-shadow: 0 15px 40px var(--primary)40;
+            animation: stepPulse 2s ease-in-out infinite;
+        }
+
+        .step.completed .step-circle {
+            background: var(--success);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .step.completed .step-circle::after {
+            content: '✓';
+            position: absolute;
+            font-size: 1.2em;
+        }
+
+        @keyframes stepPulse {
+            0%, 100% { box-shadow: 0 15px 40px var(--primary)40; }
+            50% { box-shadow: 0 20px 60px var(--primary)60; }
+        }
+
+        .step-label {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .step.active .step-label {
+            color: var(--primary);
+            transform: scale(1.05);
+        }
+
+        /* Ultra Enhanced Upload Area */
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 20px;
+            padding: 60px 40px;
+            margin-bottom: 30px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            background: linear-gradient(135deg, var(--primary)05, var(--secondary)05);
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .upload-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, var(--primary)20, transparent);
+            transition: left 0.6s ease;
+        }
+
+        .upload-area:hover::before {
+            left: 100%;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, var(--primary)10, var(--secondary)10);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 25px 80px var(--primary)20;
+        }
+
+        .upload-area.dragover {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, var(--primary)20, var(--secondary)20);
+            transform: scale(1.05);
+            box-shadow: 0 30px 100px var(--primary)30;
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            color: var(--primary);
+            margin-bottom: 20px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .upload-area:hover .upload-icon {
+            transform: scale(1.2) rotate(5deg);
+            animation: none;
+        }
+
+        .upload-text {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .upload-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        /* Ultra Enhanced Record Button */
+        .record-section {
+            text-align: center;
+            margin: 40px 0;
+        }
+
+        .record-button {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--error), #dc2626);
+            border: none;
+            color: white;
+            font-size: 2.5em;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 60px var(--error)30;
+        }
+
+        .record-button::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(transparent, rgba(255,255,255,0.3), transparent);
+            animation: rotate 2s linear infinite;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .record-button:hover::before {
+            opacity: 1;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .record-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 30px 80px var(--error)40;
+        }
+
+        .record-button.recording {
+            background: linear-gradient(135deg, var(--success), #059669);
+            animation: recordPulse 1.5s ease-in-out infinite;
+            box-shadow: 0 20px 60px var(--success)40;
+        }
+
+        @keyframes recordPulse {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 20px 60px var(--success)40;
+            }
+            50% { 
+                transform: scale(1.15);
+                box-shadow: 0 30px 80px var(--success)60;
+            }
+        }
+
+        /* Ultra Enhanced Audio Visualizer */
+        .audio-visualizer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            margin: 30px 0;
+            height: 80px;
+        }
+
+        .bar {
+            width: 6px;
+            border-radius: 3px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            animation: audioBar 1.2s ease-in-out infinite;
+            transform-origin: bottom;
+        }
+
+        .bar:nth-child(1) { animation-delay: 0s; }
+        .bar:nth-child(2) { animation-delay: 0.1s; }
+        .bar:nth-child(3) { animation-delay: 0.2s; }
+        .bar:nth-child(4) { animation-delay: 0.3s; }
+        .bar:nth-child(5) { animation-delay: 0.4s; }
+        .bar:nth-child(6) { animation-delay: 0.5s; }
+        .bar:nth-child(7) { animation-delay: 0.6s; }
+        .bar:nth-child(8) { animation-delay: 0.7s; }
+        .bar:nth-child(9) { animation-delay: 0.8s; }
+        .bar:nth-child(10) { animation-delay: 0.9s; }
+
+        @keyframes audioBar {
+            0%, 100% { 
+                height: 20px; 
+                background: var(--primary)50;
+            }
+            50% { 
+                height: 70px; 
+                background: linear-gradient(135deg, var(--primary), var(--secondary));
+            }
+        }
+
+        /* Ultra Enhanced Loading */
+        .loading-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .loading-spinner {
+            width: 80px;
+            height: 80px;
+            border: 4px solid var(--border);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            position: relative;
+        }
+
+        .loading-spinner::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            right: -4px;
+            bottom: -4px;
+            border: 4px solid transparent;
+            border-top: 4px solid var(--secondary);
+            border-radius: 50%;
+            animation: spin 1.5s linear infinite reverse;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .waveform {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            height: 60px;
+        }
+
+        .wave {
+            width: 4px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 2px;
+            animation: wave 1.5s ease-in-out infinite;
+        }
+
+        .wave:nth-child(1) { height: 20px; animation-delay: 0s; }
+        .wave:nth-child(2) { height: 30px; animation-delay: 0.1s; }
+        .wave:nth-child(3) { height: 45px; animation-delay: 0.2s; }
+        .wave:nth-child(4) { height: 25px; animation-delay: 0.3s; }
+        .wave:nth-child(5) { height: 50px; animation-delay: 0.4s; }
+        .wave:nth-child(6) { height: 35px; animation-delay: 0.5s; }
+        .wave:nth-child(7) { height: 25px; animation-delay: 0.6s; }
+        .wave:nth-child(8) { height: 40px; animation-delay: 0.7s; }
+        .wave:nth-child(9) { height: 30px; animation-delay: 0.8s; }
+        .wave:nth-child(10) { height: 20px; animation-delay: 0.9s; }
+
+        @keyframes wave {
+            0%, 100% { 
+                transform: scaleY(0.5); 
+                opacity: 0.7; 
+            }
+            50% { 
+                transform: scaleY(1.2); 
+                opacity: 1; 
+            }
+        }
+
+        /* Ultra Enhanced Result Card */
+        .result-card {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            animation: resultAppear 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 25px 80px var(--success)30;
+            margin-top: 30px;
+        }
+
+        .result-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23dots)"/></svg>');
+            opacity: 0.3;
+        }
+
+        @keyframes resultAppear {
+            from {
+                opacity: 0;
+                transform: scale(0.8) translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .result-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .result-title {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        .result-speaker {
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .result-confidence {
+            font-size: 1.1em;
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+
+        .confidence-bar {
+            background: rgba(255, 255, 255, 0.2);
+            height: 12px;
+            border-radius: 6px;
+            margin-top: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, rgba(255,255,255,0.9), white);
+            border-radius: 6px;
+            transition: width 2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .confidence-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+            animation: shimmer 2s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Enhanced Buttons */
+        .btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            margin: 10px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px var(--primary)30;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 20px 50px var(--primary)40;
+        }
+
+        .btn:active {
+            transform: translateY(-2px) scale(1.02);
+        }
+
+        .btn.secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 2px solid var(--border);
+            box-shadow: 0 10px 30px var(--shadow);
+        }
+
+        .btn.secondary:hover {
+            background: var(--primary)10;
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .status-text {
+            color: var(--text-secondary);
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        .separator {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: var(--text-secondary);
+            margin: 20px 0;
+            font-weight: 600;
+        }
+        .separator::before,
+        .separator::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border);
+        }
+        .separator:not(:empty)::before {
+            margin-right: .5em;
+        }
+        .separator:not(:empty)::after {
+            margin-left: .5em;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 20px 40px var(--shadow);
+            transform: translateX(400px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .toast.success { border-left: 4px solid var(--success); }
+        .toast.error { border-left: 4px solid var(--error); }
+        .toast.warning { border-left: 4px solid var(--warning); }
+        .toast.info { border-left: 4px solid var(--primary); }
+
+        .toast-icon { font-size: 1.4em; }
+        .toast.success .toast-icon { color: var(--success); }
+        .toast.error .toast-icon { color: var(--error); }
+        .toast.warning .toast-icon { color: var(--warning); }
+        .toast.info .toast-icon { color: var(--primary); }
+
+        .toast-message {
+            flex: 1;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .placeholder-content {
+            background-color: var(--bg-secondary);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 30px var(--shadow);
+        }
+        .placeholder-content i {
+            font-size: 3em;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+        .placeholder-content h3 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        .placeholder-content p {
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon"><i class="fas fa-fingerprint"></i></div>
+                    <div class="logo-text">
+                        <h2>VoiceID Pro</h2>
+                        <p>Reconnaissance Avancée</p>
+                    </div>
+                </div>
+            </div>
+            <nav class="nav-menu">
+                <div class="nav-item active" data-page="recognition">
+                    <i class="fas fa-microphone-alt"></i>
+                    <span>Reconnaissance</span>
+                </div>
+                <div class="nav-item" data-page="history">
+                    <i class="fas fa-history"></i>
+                    <span>Historique</span>
+                </div>
+                <div class="nav-item" data-page="analytics">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Analytiques</span>
+                </div>
+                <div class="nav-item" data-page="speakers">
+                    <i class="fas fa-users"></i>
+                    <span>Base de Locuteurs</span>
+                </div>
+                <div class="nav-item" data-page="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Paramètres</span>
+                </div>
+            </nav>
+            <div class="theme-selector">
+                <h3 class="theme-title">Thèmes</h3>
+                <div class="theme-options">
+                    <div class="theme-option light" data-theme="light" title="Clair"></div>
+                    <div class="theme-option dark" data-theme="dark" title="Sombre"></div>
+                    <div class="theme-option night" data-theme="night" title="Nuit"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content" id="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="menu-toggle" id="menu-toggle" title="Basculer le menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1 class="page-title" id="page-title">Reconnaissance Vocale</h1>
+                </div>
+                <div class="topbar-right">
+                    <div class="status-indicator">
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <!-- Page: Recognition -->
+                <div id="page-recognition" class="page-content">
+                    <div class="recognition-container">
+                        <div class="recognition-header">
+                            <h2 class="recognition-title">Identifiez un locuteur</h2>
+                            <p class="recognition-subtitle">Chargez un fichier audio ou enregistrez votre voix pour une analyse instantanée.</p>
+                        </div>
+                        
+                        <div class="step-indicator" id="step-indicator">
+                            <div class="step active" id="step-marker-1">
+                                <div class="step-circle">1</div><div class="step-label">Entrée Audio</div>
+                            </div>
+                            <div class="step" id="step-marker-2">
+                                <div class="step-circle">2</div><div class="step-label">Analyse</div>
+                            </div>
+                            <div class="step" id="step-marker-3">
+                                <div class="step-circle">3</div><div class="step-label">Résultat</div>
+                            </div>
+                        </div>
+
+                        <!-- Step 1: Upload/Record -->
+                        <div id="step-1-content">
+                            <div class="upload-area" id="upload-area">
+                                <input type="file" id="file-input" class="hidden" accept="audio/*">
+                                <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                                <div class="upload-text">Glissez-déposez un fichier audio</div>
+                                <div class="upload-subtitle">ou cliquez pour parcourir. Formats supportés: MP3, WAV, FLAC.</div>
+                            </div>
+                            <div class="separator">OU</div>
+                            <div class="record-section">
+                                <button class="record-button" id="record-button" title="Démarrer l'enregistrement"><i class="fas fa-microphone"></i></button>
+                                <div id="record-status" class="status-text hidden">Enregistrement en cours... <span id="timer">00:00</span></div>
+                                <div class="audio-visualizer hidden" id="audio-visualizer">
+                                    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Processing -->
+                        <div id="step-2-content" class="hidden">
+                            <div class="loading-section">
+                                <p class="status-text">Analyse de l'empreinte vocale en cours, veuillez patienter...</p>
+                                <div class="waveform">
+                                    <div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Result -->
+                        <div id="step-3-content" class="hidden">
+                            <div class="result-card">
+                                <div class="result-content">
+                                    <h3 class="result-title">Identification Réussie</h3>
+                                    <p class="result-speaker">Locuteur Identifié : <strong id="speaker-name">Alex Dupont</strong></p>
+                                    <p class="result-confidence">Confiance de la prédiction : <strong id="confidence-score">98.7%</strong></p>
+                                    <div class="confidence-bar">
+                                        <div class="confidence-fill" id="confidence-fill" style="width: 0%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                             <div style="text-align: center; margin-top: 30px;">
+                                <button class="btn" id="reset-button"><i class="fas fa-redo-alt" style="margin-right: 8px;"></i>Analyser un autre fichier</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Placeholder Pages -->
+                <div id="page-history" class="page-content hidden">
+                    <div class="placeholder-content"><i class="fas fa-history"></i><h3>Historique des analyses</h3><p>Cette section affichera la liste de toutes les reconnaissances vocales passées.</p></div>
+                </div>
+                <div id="page-analytics" class="page-content hidden">
+                     <div class="placeholder-content"><i class="fas fa-chart-pie"></i><h3>Analytiques</h3><p>Des graphiques et statistiques sur l'utilisation du système apparaîtront ici.</p></div>
+                </div>
+                <div id="page-speakers" class="page-content hidden">
+                     <div class="placeholder-content"><i class="fas fa-users"></i><h3>Base de Locuteurs</h3><p>Gérez les profils vocaux enregistrés dans le système depuis cette page.</p></div>
+                </div>
+                <div id="page-settings" class="page-content hidden">
+                     <div class="placeholder-content"><i class="fas fa-cog"></i><h3>Paramètres</h3><p>Configurez les options avancées de l'application ici.</p></div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+    
+    <div class="toast-container" id="toast-container"></div>
+    
+    <!-- Liste des fonctionnalités (en commentaire HTML)
+        * Barre Latérale Interactive : Navigation fluide avec animations de transition
+        * Sélecteur de thème visuel : 3 options (Clair, Sombre, Nuit)
+        * Animations Avancées : Shimmer, Floating, Glassmorphism, etc.
+        * Système de Notifications : Messages toast animés pour le feedback
+        * Drag & Drop Avancé : Avec feedback visuel
+        * Responsive Design : Adaptation mobile
+    -->
+
+       <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // --- DOM Element Selectors ---
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+        const menuToggle = document.getElementById('menu-toggle');
+        const themeOptions = document.querySelectorAll('.theme-option');
+        const navItems = document.querySelectorAll('.nav-item');
+        const pageTitle = document.getElementById('page-title');
+        const pageContents = document.querySelectorAll('.page-content');
+        
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const recordButton = document.getElementById('record-button');
+        const recordStatus = document.getElementById('record-status');
+        const audioVisualizer = document.getElementById('audio-visualizer');
+        
+        const stepMarkers = { 1: document.getElementById('step-marker-1'), 2: document.getElementById('step-marker-2'), 3: document.getElementById('step-marker-3') };
+        const stepContents = { 1: document.getElementById('step-1-content'), 2: document.getElementById('step-2-content'), 3: document.getElementById('step-3-content') };
+
+        const resultConfidenceFill = document.getElementById('confidence-fill');
+        const resetButton = document.getElementById('reset-button');
+        const toastContainer = document.getElementById('toast-container');
+        
+        let isRecording = false;
+        let timerInterval;
+        let mediaRecorder;
+        let audioChunks = [];
+
+        // --- Core Functions ---
+
+        function showToast(message, type = 'info') {
+            const icons = { success: 'fa-check-circle', error: 'fa-times-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<i class="fas ${icons[type]} toast-icon"></i> <div class="toast-message">${message}</div>`;
+            toastContainer.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.addEventListener('transitionend', () => toast.remove());
+            }, 4000);
+        }
+
+        function updateStep(activeStep) {
+            for (let i = 1; i <= 3; i++) {
+                stepMarkers[i].classList.remove('active', 'completed');
+                const circle = stepMarkers[i].querySelector('.step-circle');
+                if (i < activeStep) {
+                    stepMarkers[i].classList.add('completed');
+                    circle.innerText = '';
+                } else {
+                    circle.innerText = i;
+                    if (i === activeStep) {
+                        stepMarkers[i].classList.add('active');
+                    }
+                }
+            }
+            for (const step in stepContents) {
+                stepContents[step].classList.add('hidden');
+            }
+            if (stepContents[activeStep]) {
+                stepContents[activeStep].classList.remove('hidden');
+            }
+        }
+
+        async function startProcessing(fileOrBlob, fileName) {
+            updateStep(2);
+            showToast(`Analyse de "${fileName}" en cours...`, 'info');
+
+            const formData = new FormData();
+            formData.append("audio_file", fileOrBlob, fileName);
+
+            try {
+                const response = await fetch('/api/recognize', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Une erreur est survenue lors de l\'analyse.');
+                }
+
+                document.getElementById('speaker-name').innerText = result.speaker_name;
+                document.getElementById('confidence-score').innerText = `${result.confidence}%`;
+                
+                showResults(result.confidence);
+
+            } catch (error) {
+                console.error('Erreur:', error);
+                showToast(error.message, 'error');
+                resetRecognitionFlow();
+            }
+        }
+        
+        function showResults(confidence) {
+            updateStep(3);
+            showToast('Analyse terminée avec succès!', 'success');
+            setTimeout(() => { 
+                resultConfidenceFill.style.width = `${confidence}%`; 
+            }, 100);
+        }
+        
+        function resetRecognitionFlow() {
+            if (isRecording) {
+                mediaRecorder.stop();
+            }
+            isRecording = false;
+            updateRecordingUI();
+            updateStep(1);
+            resultConfidenceFill.style.width = '0%';
+        }
+        
+        function toggleRecording() {
+            if (isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                updateRecordingUI();
+            } else {
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(stream => {
+                        isRecording = true;
+                        updateRecordingUI();
+                        
+                        mediaRecorder = new MediaRecorder(stream);
+                        audioChunks = [];
+                        
+                        mediaRecorder.ondataavailable = event => {
+                            audioChunks.push(event.data);
+                        };
+
+                        mediaRecorder.onstop = () => {
+                            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                            stream.getTracks().forEach(track => track.stop());
+                            // Seulement traiter si l'enregistrement a été arrêté manuellement et non par le reset
+                            if(isRecording === false) { 
+                                startProcessing(audioBlob, "enregistrement.wav");
+                            }
+                        };
+                        
+                        mediaRecorder.start();
+                    }).catch(err => {
+                        console.error("Erreur d'accès au microphone:", err);
+                        showToast("Impossible d'accéder au microphone.", 'error');
+                    });
+            }
+        }
+        
+        function updateRecordingUI() {
+             recordButton.classList.toggle('recording', isRecording);
+             audioVisualizer.classList.toggle('hidden', !isRecording);
+             recordStatus.classList.toggle('hidden', !isRecording);
+             const icon = recordButton.querySelector('i');
+             
+             if (isRecording) {
+                 icon.className = 'fas fa-stop';
+                 recordButton.title = "Arrêter l'enregistrement";
+                 let seconds = 0;
+                 document.getElementById('timer').innerText = '00:00';
+                 timerInterval = setInterval(() => {
+                     seconds++;
+                     const min = String(Math.floor(seconds / 60)).padStart(2, '0');
+                     const sec = String(seconds % 60).padStart(2, '0');
+                     document.getElementById('timer').innerText = `${min}:${sec}`;
+                 }, 1000);
+             } else {
+                 icon.className = 'fas fa-microphone';
+                 recordButton.title = "Démarrer l'enregistrement";
+                 clearInterval(timerInterval);
+             }
+        }
+
+        function switchPage(pageId) {
+            pageContents.forEach(page => page.classList.add('hidden'));
+            const newPage = document.getElementById(pageId);
+            if(newPage) newPage.classList.remove('hidden');
+            if(pageId !== 'page-recognition') resetRecognitionFlow();
+        }
+        
+        // --- Event Listeners ---
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+            mainContent.classList.toggle('expanded');
+        });
+
+        themeOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                const theme = option.dataset.theme;
+                document.documentElement.setAttribute('data-theme', theme);
+                localStorage.setItem('voiceid-theme', theme);
+                themeOptions.forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+            });
+        });
+
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const pageId = `page-${item.dataset.page}`;
+                pageTitle.textContent = item.querySelector('span').textContent;
+                navItems.forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                switchPage(pageId);
+            });
+        });
+        
+        uploadArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) startProcessing(file, file.name);
+            fileInput.value = '';
+        });
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); });
+        });
+        ['dragenter', 'dragover'].forEach(eventName => uploadArea.addEventListener(eventName, () => uploadArea.classList.add('dragover')));
+        ['dragleave', 'drop'].forEach(eventName => uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('dragover')));
+
+        uploadArea.addEventListener('drop', (e) => {
+            const file = e.dataTransfer.files[0];
+            if (!file) return;
+            if (file.type.startsWith('audio/')) {
+                startProcessing(file, file.name);
+            } else {
+                showToast("Type de fichier non valide. Veuillez charger un fichier audio.", 'error');
+            }
+        });
+        
+        recordButton.addEventListener('click', toggleRecording);
+        resetButton.addEventListener('click', resetRecognitionFlow);
+
+        // --- Initialization ---
+        const savedTheme = localStorage.getItem('voiceid-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        const activeThemeOption = document.querySelector(`.theme-option[data-theme="${savedTheme}"]`);
+        if (activeThemeOption) activeThemeOption.classList.add('active');
+
+        updateStep(1);
+        switchPage('page-recognition');
+    });
+    </script>
+</body>
+</html>
