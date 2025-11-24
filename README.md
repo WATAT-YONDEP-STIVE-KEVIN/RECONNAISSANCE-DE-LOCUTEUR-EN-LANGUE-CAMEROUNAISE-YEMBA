@@ -1,0 +1,2 @@
+# RECONNAISSANCE-DE-LOCUTEUR-EN-LANGUE-CAMEROUNAISE-YEMBA
+ Le projet couvre l’ensemble du cycle habituel de traitement: collecte et préparation des données, prétraitement audio, extraction de caractéristiques pertinentes, modélisation et évaluation, puis déploiement. L’objectif est d’identifier l’auteur d’un échantillon vocal donné en Yemba avec des performances acceptables dans des environnements variés.
