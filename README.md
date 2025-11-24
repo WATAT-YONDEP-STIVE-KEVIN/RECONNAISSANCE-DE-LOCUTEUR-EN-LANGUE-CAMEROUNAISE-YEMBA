@@ -17,7 +17,7 @@ Ce projet vise à identifier le locuteur à partir d’enregistrements audio en 
 - la modélisation et l’évaluation ,
 - un script de déploiement simple pour des prédictions en temps réel.
 
-##NOTE: le jeu de données étant tres lourd, vous pouvez vous le rocurer a l'adresse:  "https://data.mendeley.com/datasets/74p9d5frg3/2"
+## NOTE: le jeu de données étant tres lourd, vous pouvez vous le rocurer a l'adresse:  "https://data.mendeley.com/datasets/74p9d5frg3/2"
 ## Installation 
 Pour cloner ce dépôt et installer les dépendances, exécutez les commandes suivantes :  
 
